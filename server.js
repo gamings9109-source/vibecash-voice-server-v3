@@ -14,13 +14,14 @@ const io = new Server(server, {
 const rooms = {};
 
 app.get("/", (req, res) => {
-  res.send("VibeCash Voice Server Running");
+  res.send("VibeCash WebRTC Signaling Server Running");
 });
 
 io.on("connection", (socket) => {
 
   console.log("User Connected:", socket.id);
 
+  // Join Room
   socket.on("join", (data) => {
 
     socket.join(data.roomId);
@@ -44,6 +45,7 @@ io.on("connection", (socket) => {
 
   });
 
+  // Chat Message
   socket.on("chat", (data) => {
 
     socket.to(socket.roomId).emit("chat", {
@@ -53,12 +55,39 @@ io.on("connection", (socket) => {
 
   });
 
-  socket.on("voice", (buffer) => {
+  // WebRTC Offer
+  socket.on("offer", (data) => {
 
-    socket.to(socket.roomId).emit("voice", buffer);
+    socket.to(data.roomId).emit("offer", {
+      sdp: data.sdp,
+      userId: data.userId
+    });
 
   });
 
+  // WebRTC Answer
+  socket.on("answer", (data) => {
+
+    socket.to(data.roomId).emit("answer", {
+      sdp: data.sdp,
+      userId: data.userId
+    });
+
+  });
+
+  // ICE Candidate
+  socket.on("ice-candidate", (data) => {
+
+    socket.to(data.roomId).emit("ice-candidate", {
+      candidate: data.candidate,
+      sdpMid: data.sdpMid,
+      sdpMLineIndex: data.sdpMLineIndex,
+      userId: data.userId
+    });
+
+  });
+
+  // Disconnect
   socket.on("disconnect", () => {
 
     console.log("Disconnected:", socket.id);
@@ -74,7 +103,6 @@ io.on("connection", (socket) => {
       if (Object.keys(rooms[socket.roomId]).length === 0) {
         delete rooms[socket.roomId];
       }
-
     }
 
   });
@@ -84,5 +112,7 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-  console.log("Voice Server Started on port " + PORT);
+  console.log(
+    "WebRTC Signaling Server Started on port " + PORT
+  );
 });
