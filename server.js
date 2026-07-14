@@ -1,4 +1,4 @@
-const express = require("express");
+      const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 
@@ -14,14 +14,16 @@ const io = new Server(server, {
 const rooms = {};
 
 app.get("/", (req, res) => {
-  res.send("VibeCash WebRTC Signaling Server Running");
+  res.send("VibeCash Voice Server Running");
 });
 
 io.on("connection", (socket) => {
 
-  console.log("User Connected:", socket.id);
+  console.log("Connected:", socket.id);
 
-  // Join Room
+  // ======================
+  // JOIN ROOM
+  // ======================
   socket.on("join", (data) => {
 
     socket.join(data.roomId);
@@ -35,72 +37,139 @@ io.on("connection", (socket) => {
 
     rooms[data.roomId][socket.id] = data.userId;
 
+    console.log(
+      "User Joined:",
+      data.userId,
+      "Room:",
+      data.roomId
+    );
+
     socket.emit("joined", {
       roomId: data.roomId
     });
 
-    socket.to(data.roomId).emit("user_joined", {
-      userId: data.userId
-    });
-
+    socket.to(data.roomId).emit(
+      "user_joined",
+      {
+        userId: data.userId
+      }
+    );
   });
 
-  // Chat Message
+  // ======================
+  // CHAT
+  // ======================
   socket.on("chat", (data) => {
 
-    socket.to(socket.roomId).emit("chat", {
-      userId: socket.userId,
-      message: data.message
-    });
+    socket.to(socket.roomId).emit(
+      "chat",
+      {
+        userId: socket.userId,
+        message: data.message
+      }
+    );
 
   });
 
-  // WebRTC Offer
+  // ======================
+  // OFFER
+  // ======================
   socket.on("offer", (data) => {
 
-    socket.to(data.roomId).emit("offer", {
-      sdp: data.sdp,
-      userId: data.userId
-    });
+    socket.to(data.roomId).emit(
+      "offer",
+      {
+        sdp: data.sdp,
+        userId: data.userId
+      }
+    );
 
   });
 
-  // WebRTC Answer
+  // ======================
+  // ANSWER
+  // ======================
   socket.on("answer", (data) => {
 
-    socket.to(data.roomId).emit("answer", {
-      sdp: data.sdp,
-      userId: data.userId
-    });
+    socket.to(data.roomId).emit(
+      "answer",
+      {
+        sdp: data.sdp,
+        userId: data.userId
+      }
+    );
 
   });
 
-  // ICE Candidate
+  // ======================
+  // ICE CANDIDATE
+  // ======================
   socket.on("ice-candidate", (data) => {
 
-    socket.to(data.roomId).emit("ice-candidate", {
-      candidate: data.candidate,
-      sdpMid: data.sdpMid,
-      sdpMLineIndex: data.sdpMLineIndex,
-      userId: data.userId
-    });
+    socket.to(data.roomId).emit(
+      "ice-candidate",
+      {
+        candidate: data.candidate,
+        sdpMid: data.sdpMid,
+        sdpMLineIndex: data.sdpMLineIndex,
+        userId: data.userId
+      }
+    );
 
   });
 
-  // Disconnect
+  // ======================
+  // VOICE
+  // ======================
+  socket.on(
+    "voice",
+    (
+      roomId,
+      userId,
+      audio
+    ) => {
+
+      socket.to(roomId).emit(
+        "voice",
+        roomId,
+        userId,
+        audio
+      );
+
+    }
+  );
+
+  // ======================
+  // DISCONNECT
+  // ======================
   socket.on("disconnect", () => {
 
-    console.log("Disconnected:", socket.id);
+    console.log(
+      "Disconnected:",
+      socket.id
+    );
 
-    if (socket.roomId && rooms[socket.roomId]) {
+    if (
+      socket.roomId &&
+      rooms[socket.roomId]
+    ) {
 
       delete rooms[socket.roomId][socket.id];
 
-      socket.to(socket.roomId).emit("user_left", {
-        userId: socket.userId
-      });
+      socket.to(
+        socket.roomId
+      ).emit(
+        "user_left",
+        {
+          userId: socket.userId
+        }
+      );
 
-      if (Object.keys(rooms[socket.roomId]).length === 0) {
+      if (
+        Object.keys(
+          rooms[socket.roomId]
+        ).length === 0
+      ) {
         delete rooms[socket.roomId];
       }
     }
@@ -109,10 +178,17 @@ io.on("connection", (socket) => {
 
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+  process.env.PORT || 3000;
 
-server.listen(PORT, () => {
-  console.log(
-    "WebRTC Signaling Server Started on port " + PORT
-  );
-});
+server.listen(
+  PORT,
+  () => {
+
+    console.log(
+      "VibeCash Voice Server Started On Port " +
+      PORT
+    );
+
+  }
+);
