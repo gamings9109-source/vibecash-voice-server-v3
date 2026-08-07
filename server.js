@@ -1,55 +1,70 @@
 const express = require("express");
-const { AccessToken } = require("livekit-server-sdk");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
 
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY;
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET;
-
-app.get("/", (req, res) => {
-  res.send("LiveKit Token Server Running");
-});
-
-app.get("/getToken", async (req, res) => {
-  try {
-    const room = req.query.room;
-    const user = req.query.user;
-
-    if (!room || !user) {
-      return res.status(400).json({
-        error: "room and user are required"
-      });
+const io = new Server(server, {
+    cors: {
+        origin: "*"
     }
-
-    const at = new AccessToken(
-      LIVEKIT_API_KEY,
-      LIVEKIT_API_SECRET,
-      {
-        identity: user
-      }
-    );
-
-    at.addGrant({
-      roomJoin: true,
-      room: room
-    });
-
-    const token = await at.toJwt();
-
-    res.json({
-      token: token
-    });
-
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({
-      error: e.toString()
-    });
-  }
 });
 
-const PORT = process.env.PORT || 3000;
+const rooms = {};
 
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+io.on("connection", (socket) => {
+
+    console.log("User Connected : " + socket.id);
+
+    socket.on("join-room", (roomId, userId) => {
+
+        socket.join(roomId);
+
+        socket.roomId = roomId;
+        socket.userId = userId;
+
+        if (!rooms[roomId]) {
+            rooms[roomId] = {};
+        }
+
+        rooms[roomId][socket.id] = userId;
+
+        socket.to(roomId).emit("user-joined", userId);
+
+        io.to(roomId).emit("user-list", Object.values(rooms[roomId]));
+
+        console.log(userId + " Joined " + roomId);
+    });
+
+    socket.on("disconnect", () => {
+
+        if (socket.roomId && rooms[socket.roomId]) {
+
+            delete rooms[socket.roomId][socket.id];
+
+            io.to(socket.roomId).emit(
+                "user-left",
+                socket.userId
+            );
+
+            io.to(socket.roomId).emit(
+                "user-list",
+                Object.values(rooms[socket.roomId])
+            );
+
+            if (
+                Object.keys(rooms[socket.roomId]).length === 0
+            ) {
+                delete rooms[socket.roomId];
+            }
+        }
+
+        console.log("Disconnected");
+    });
+
+});
+
+server.listen(3000, () => {
+    console.log("Voice Server Started");
 });
