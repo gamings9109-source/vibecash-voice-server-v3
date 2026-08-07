@@ -17,6 +17,7 @@ io.on("connection", (socket) => {
 
     console.log("User Connected : " + socket.id);
 
+    // Join Room
     socket.on("join-room", (roomId, userId) => {
 
         socket.join(roomId);
@@ -32,11 +33,30 @@ io.on("connection", (socket) => {
 
         socket.to(roomId).emit("user-joined", userId);
 
-        io.to(roomId).emit("user-list", Object.values(rooms[roomId]));
+        io.to(roomId).emit(
+            "user-list",
+            Object.values(rooms[roomId])
+        );
 
         console.log(userId + " Joined " + roomId);
     });
 
+    // WebRTC Offer
+    socket.on("offer", (roomId, data) => {
+        socket.to(roomId).emit("offer", data);
+    });
+
+    // WebRTC Answer
+    socket.on("answer", (roomId, data) => {
+        socket.to(roomId).emit("answer", data);
+    });
+
+    // ICE Candidate
+    socket.on("ice-candidate", (roomId, data) => {
+        socket.to(roomId).emit("ice-candidate", data);
+    });
+
+    // Disconnect
     socket.on("disconnect", () => {
 
         if (socket.roomId && rooms[socket.roomId]) {
@@ -66,5 +86,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(3000, () => {
-    console.log("Voice Server Started");
+    console.log("Voice Server Started on Port 3000");
 });
